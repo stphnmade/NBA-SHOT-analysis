@@ -13,18 +13,17 @@ execute:
   message: false
 ---
 
-```{r}
-# --- Libraries & helpers ---
+```{r setup-data, include=FALSE}
+# Libraries
 library(tidyverse)
 library(lubridate)
 library(janitor)
 library(ggplot2)
 
-# Load data (saved earlier as RDS)
-shots <- readRDS("data/nba_shots.rds") |>
-  clean_names()
+# Load data
+shots <- readRDS("data/nba_shots.rds") |> clean_names()
 
-# --- Derive season label ---
+# Derive season
 has_season_cols <- all(c("season_1","season_2") %in% names(shots))
 if (has_season_cols) {
   shots <- shots |>
@@ -32,42 +31,120 @@ if (has_season_cols) {
 } else {
   shots <- shots |>
     mutate(game_date = mdy(game_date)) |>
-    mutate(year = year(game_date),
-           month = month(game_date),
-           season_start = if_else(month >= 10, year, year - 1),
-           season = paste0(season_start, "-", substr(season_start + 1, 3, 4)))
+    mutate(
+      year = year(game_date),
+      month = month(game_date),
+      season_start = if_else(month >= 10, year, year - 1),
+      season = paste0(season_start, "-", substr(season_start + 1, 3, 4))
+    )
 }
 
+# Normalize fields (be tolerant if some cols are missing)
+to_char <- function(x) if (x %in% names(shots)) as.character(.data[[x]]) else NA_character_
 shots <- shots |>
   mutate(
-    shot_type = toupper(as.character(shot_type)),
-    shot_made = as.logical(shot_made),
-    basic_zone = as.character(basic_zone),
-    zone_range = as.character(zone_range)
+    shot_type    = toupper(if ("shot_type"    %in% names(shots)) as.character(shot_type) else NA_character_),
+    shot_made    = if ("shot_made"   %in% names(shots)) as.logical(shot_made) else NA,
+    basic_zone   = if ("basic_zone"  %in% names(shots)) as.character(basic_zone) else NA_character_,
+    zone_range   = if ("zone_range"  %in% names(shots)) as.character(zone_range) else NA_character_,
+    shot_distance= if ("shot_distance" %in% names(shots)) as.numeric(shot_distance) else NA_real_
   )
 
-# --- Season aggregates ---
+# Season aggregates
 season_summ <- shots |>
   group_by(season) |>
   summarise(
-    fga = n(),
-    fgm = sum(shot_made, na.rm = TRUE),
-    fga_3 = sum(shot_type == "3PT", na.rm = TRUE),
-    fgm_3 = sum(shot_type == "3PT" & shot_made, na.rm = TRUE),
-    share_mid = mean(basic_zone == "Midrange", na.rm = TRUE),
-    share_ra  = mean(basic_zone == "Restricted Area", na.rm = TRUE),
+    fga      = n(),
+    fgm      = sum(shot_made %in% TRUE, na.rm = TRUE),
+    fga_3    = sum(shot_type == "3PT", na.rm = TRUE),
+    fgm_3    = sum(shot_type == "3PT" & (shot_made %in% TRUE), na.rm = TRUE),
+    share_mid   = mean(basic_zone == "Midrange", na.rm = TRUE),
+    share_ra    = mean(basic_zone == "Restricted Area", na.rm = TRUE),
     share_paint = mean(basic_zone == "In the Paint (non-RA)", na.rm = TRUE),
-    share_c3 = mean(basic_zone %in% c("Left Corner 3","Right Corner 3"), na.rm = TRUE),
-    share_atb = mean(basic_zone == "Above the Break", na.rm = TRUE),
-    med_dist = median(shot_distance, na.rm = TRUE),
+    share_c3    = mean(basic_zone %in% c("Left Corner 3","Right Corner 3"), na.rm = TRUE),
+    share_atb   = mean(basic_zone == "Above the Break", na.rm = TRUE),
+    med_dist = suppressWarnings(median(shot_distance, na.rm = TRUE)),
     .groups = "drop"
   ) |>
   mutate(
-    three_rate = fga_3 / fga,
-    efg = (fgm + 0.5 * fgm_3) / fga
+    three_rate = if_else(fga > 0, fga_3 / fga, NA_real_),
+    efg = if_else(fga > 0, (fgm + 0.5 * fgm_3) / fga, NA_real_)
   ) |>
   arrange(season)
 
-# helper for x-axis ticks
+# Long format for stacked area (guard against missing cols)
+needed <- c("share_ra","share_paint","share_mid","share_c3","share_atb")
+missing_needed <- setdiff(needed, names(season_summ))
+if (length(missing_needed)) {
+  # create missing shares as 0 to avoid errors
+  season_summ[missing_needed] <- 0
+}
+selection_long <- season_summ |>
+  select(season, all_of(needed)) |>
+  pivot_longer(-season, names_to = "bucket", values_to = "share") |>
+  mutate(
+    bucket = factor(
+      bucket,
+      levels = c("share_ra","share_paint","share_mid","share_c3","share_atb"),
+      labels = c("Restricted Area","Paint (non-RA)","Midrange","Corner 3","Above the Break")
+    )
+  )
+
+# X-axis breaks helper
 season_order  <- season_summ$season
-season_breaks <- season_order[seq(1, length(season_order), length.out = min(10, length(season_order)))] |> unique()
+season_breaks <- unique(season_order[seq(1, length(season_order), length.out = min(10, length(season_order)))])
+```
+
+
+
+## Three-Point Attempt Rate
+
+::: {.scrolly}
+::: {.steps}
+
+### A league re-written by the three
+Narration here…
+
+### Context
+Narration here…
+
+:::
+
+::: {.graphic}
+```{r}
+ggplot(season_summ, aes(season, three_rate, group=1)) +
+  geom_line(linewidth=1.2) + geom_point() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y="3PA share", title="Three-Point Attempt Rate Over Time")
+
+```
+
+:::
+:::
+
+
+Where Do Shots Come From?
+
+::: {.scrolly}
+::: {.steps}
+
+Geometry of modern offense
+
+Narration here…
+:::
+
+::: {.graphic}
+
+```{r}
+ggplot(selection_long, aes(season, share, fill=bucket)) +
+  geom_area(color="white", size=0.1) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y="Share of attempts", title="Shot Distribution by Zone")
+```
+
+
+
+
+:::
+:::
+

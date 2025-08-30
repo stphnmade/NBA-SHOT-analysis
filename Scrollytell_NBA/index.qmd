@@ -136,7 +136,7 @@ ggplot(season_summ, aes(x = season, y = three_rate, group = 1)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 1.8) +
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
-  scale_x_discrete(breaks = season_breaks) +
+  scale_x_discrete() +
   labs(
     x = NULL, y = "3PA share of all FGA",
     title = "Three-Point Attempt Rate Over Time",
@@ -174,7 +174,12 @@ Narration here…
 ggplot(season_summ, aes(season, three_rate, group=1)) +
   geom_line(linewidth=1.2) + geom_point() +
   scale_y_continuous(labels = scales::percent) +
-  labs(y="3PA share", title="Three-Point Attempt Rate Over Time")
+  scale_x_continuous()+
+  labs(x=season_summ$season
+       ,y="3PA share", title="Three-Point Attempt Rate Over Time")+
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(hjust = 0.5))
+  
 
 ```
 

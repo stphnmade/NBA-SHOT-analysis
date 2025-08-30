@@ -172,13 +172,14 @@ Narration here…
 ::: {.graphic}
 ```{r}
 ggplot(season_summ, aes(season, three_rate, group=1)) +
-  geom_line(linewidth=1.2) + geom_point() +
+  geom_line(linewidth=1.2) + 
+  geom_point() +
   scale_y_continuous(labels = scales::percent) +
-  scale_x_continuous()+
-  labs(x=season_summ$season
-       ,y="3PA share", title="Three-Point Attempt Rate Over Time")+
+  scale_x_continuous(breaks = unique(season_summ$season), labels = as.integer(unique(season_summ$season))) +
+  labs(x = "Season", y = "3PA share", title = "Three-Point Attempt Rate Over Time") +
   theme_minimal(base_size = 14) +
   theme(axis.text.x = element_text(hjust = 0.5))
+
   
 
 ```

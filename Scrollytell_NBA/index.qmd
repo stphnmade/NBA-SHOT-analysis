@@ -52,6 +52,7 @@ shots |>
 
 ```
 
+
 ```{r}
 #| label: Season_data
 # Season aggregates
@@ -81,9 +82,9 @@ season_summ <- shots |>
 
 ```{r}
 season_summ <- season_summ|>
-  rename(season = season_1)
+  rename(season = season_1)|>
+  mutate(season = as.integer(season))
 ```
-
 
 
 ```{r}
@@ -109,6 +110,7 @@ selection_long <- season_summ |>
 season_order  <- season_summ$season
 season_breaks <- unique(season_order[seq(1, length(season_order), length.out = min(10, length(season_order)))])
 ```
+
 
 ## Three-Point Attempt Rate
 
@@ -145,6 +147,7 @@ ggplot(season_summ, aes(x = season, y = three_rate, group = 1)) +
   theme_minimal(base_size = 14) +
   theme(axis.text.x = element_text(hjust = 0.5))
 ```
+
 
 :::
 :::
@@ -201,15 +204,29 @@ Narration here…
 ::: {.graphic}
 
 ```{r}
-ggplot(selection_long, aes(season, share, fill=bucket)) +
-  geom_area(color="white", size=0.1) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(y="Share of attempts", title="Shot Distribution by Zone")
+library(dplyr)
+library(ggplot2)
+
+zone_levels <- c("Paint (non-RA)","Midrange","Corner 3","Above the Break")
+
+non_ra <- selection_long %>%
+  filter(bucket != "Restricted Area") %>%
+  mutate(season = as.integer(season),
+         bucket = factor(bucket, levels = zone_levels)) %>%
+  group_by(season) %>%
+  mutate(share_nonRA = share / sum(share)) %>%
+  ungroup()
+
+ggplot(non_ra, aes(x = factor(season), y = bucket, fill = share_nonRA)) +
+  geom_tile() +
+  scale_fill_viridis_c(labels = scales::percent, name = "Share of non-RA") +
+  labs(x = NULL, y = NULL,
+       title = "Non-RA Shot Mix by Zone (Heatmap)") +
+  theme_minimal(base_size = 14) +
+  theme(panel.grid = element_blank())
+
+
 ```
 
-
-
-
 :::
 :::
-

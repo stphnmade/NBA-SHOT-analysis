@@ -227,6 +227,3 @@ ggplot(non_ra, aes(x = factor(season), y = bucket, fill = share_nonRA)) +
 
 
 ```
-
-:::
-:::

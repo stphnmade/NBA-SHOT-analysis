@@ -1,0 +1,246 @@
+---
+title: "Interactive Shot Explorer"
+format:
+  html:
+    smooth-scroll: true
+---
+
+```{r setup}
+library(dplyr)
+library(readr)
+source("R/prepare_data.R")
+
+set.seed(42)
+nba <- load_shot_data(sample_per_group = 1200L)
+explorer <- nba$sampled_shots |>
+  filter(
+    !is.na(loc_x),
+    !is.na(loc_y),
+    abs(loc_x) <= 25,
+    loc_y >= 0,
+    loc_y <= 47,
+    basic_zone != "Backcourt"
+  )
+
+dir.create("docs/data", recursive = TRUE, showWarnings = FALSE)
+readr::write_csv(explorer, "docs/data/shot_explorer_sample.csv")
+```
+
+Filter by season, team, shot type, and result.
+
+```{ojs}
+shotData = await d3.csv("data/shot_explorer_sample.csv", d3.autoType)
+
+typeaheadInput = (options, {label, value, placeholder, maxSuggestions = 5}) => {
+  const listId = `suggest-${Math.random().toString(36).slice(2, 10)}`
+  const wrapper = html`<label style="display:grid; gap:0.35rem;">
+    <span>${label} (search)</span>
+    <input type="text" list="${listId}" value="${value ?? ""}" placeholder="${placeholder ?? ""}" style="width:100%;">
+    <datalist id="${listId}"></datalist>
+    <small style="opacity:0.75;">Top ${maxSuggestions} suggestions while typing</small>
+  </label>`
+  const input = wrapper.querySelector("input")
+  const datalist = wrapper.querySelector("datalist")
+  const optionStrings = options.map(option => String(option))
+
+  const refreshSuggestions = () => {
+    const query = input.value.trim().toLowerCase()
+    const matches = optionStrings
+      .filter(option => option.toLowerCase().includes(query))
+      .slice(0, maxSuggestions)
+    datalist.replaceChildren(...matches.map(match => html`<option value="${match}"></option>`))
+  }
+
+  const emitInput = () => {
+    wrapper.value = input.value
+    wrapper.dispatchEvent(new Event("input", {bubbles: true}))
+  }
+
+  input.addEventListener("input", () => {
+    refreshSuggestions()
+    emitInput()
+  })
+  input.addEventListener("change", emitInput)
+
+  wrapper.value = input.value
+  refreshSuggestions()
+  return wrapper
+}
+
+adaptiveInput = (options, config) => (
+  options.length > 10
+    ? typeaheadInput(options, config)
+    : Inputs.select(options, {label: config.label, value: config.value})
+)
+
+resolveSearchValue = (inputValue, options, fallback) => {
+  if (options.length === 0) return fallback ?? null
+  const fallbackValue = options.includes(fallback) ? fallback : options[0]
+  const query = String(inputValue ?? "").trim().toLowerCase()
+  if (!query) return fallbackValue
+  const exact = options.find(option => String(option).toLowerCase() === query)
+  if (exact) return exact
+  const partial = options.find(option => String(option).toLowerCase().includes(query))
+  return partial ?? fallbackValue
+}
+
+seasonMeta = Array.from(
+  new Set(shotData.map(d => +d.season))
+).sort((a, b) => a - b).map(season => ({
+  season,
+  season_label: `${season}-${String((season + 1) % 100).padStart(2, "0")}`
+}))
+
+seasonLookup = new Map(seasonMeta.map(d => [d.season, d.season_label]))
+seasonFromLabel = new Map(seasonMeta.map(d => [d.season_label, d.season]))
+seasonLabels = seasonMeta.map(d => d.season_label)
+seasonOptions = ["All seasons", ...seasonLabels]
+
+teamOptions = ["All teams", ...Array.from(new Set(
+  shotData.map(d => d.team_name).filter(Boolean)
+)).sort((a, b) => d3.ascending(a, b))]
+
+defaultSeason = seasonLabels[seasonLabels.length - 1]
+
+viewof seasonFilterInput = adaptiveInput(seasonOptions, {
+  label: "Season",
+  value: defaultSeason,
+  placeholder: "Type season, e.g. 2019-20"
+})
+
+viewof teamFilterInput = adaptiveInput(teamOptions, {
+  label: "Team",
+  value: "All teams",
+  placeholder: "Type team name..."
+})
+
+viewof shotTypeFilter = Inputs.radio(["All", "2PT", "3PT"], {
+  label: "Shot Type",
+  value: "All"
+})
+
+viewof resultFilter = Inputs.radio(["All", "Made", "Missed"], {
+  label: "Result",
+  value: "All"
+})
+
+seasonFilter = resolveSearchValue(seasonFilterInput, seasonOptions, defaultSeason)
+teamFilter = resolveSearchValue(teamFilterInput, teamOptions, "All teams")
+selectedSeason = seasonFilter === "All seasons" ? null : seasonFromLabel.get(seasonFilter)
+
+filteredShots = shotData.filter(d =>
+  (selectedSeason === null || d.season === selectedSeason) &&
+  (teamFilter === "All teams" || d.team_name === teamFilter) &&
+  (shotTypeFilter === "All" || d.shot_type === shotTypeFilter) &&
+  (resultFilter === "All" || d.shot_made === resultFilter)
+)
+
+md`Showing **${filteredShots.length.toLocaleString()}** sampled shots.`
+```
+
+```{ojs}
+arcPoints = (cx, cy, r, startDeg, endDeg, steps = 80) => {
+  const pts = []
+  const start = startDeg * Math.PI / 180
+  const end = endDeg * Math.PI / 180
+  for (let i = 0; i <= steps; i++) {
+    const t = start + (end - start) * (i / steps)
+    pts.push({x: cx + r * Math.cos(t), y: cy + r * Math.sin(t)})
+  }
+  return pts
+}
+
+courtSegments = () => {
+  const segs = []
+  const pushLine = (a, b, id) => segs.push({id, points: [{x: a[0], y: a[1]}, {x: b[0], y: b[1]}]})
+
+  pushLine([-25, 0], [25, 0], "baseline")
+  pushLine([-25, 0], [-25, 47], "left_sideline")
+  pushLine([25, 0], [25, 47], "right_sideline")
+  pushLine([-25, 47], [25, 47], "halfcourt")
+
+  pushLine([-8, 0], [-8, 19], "paint_left")
+  pushLine([8, 0], [8, 19], "paint_right")
+  pushLine([-8, 19], [8, 19], "paint_top")
+
+  segs.push({id: "restricted", points: arcPoints(0, 5.25, 4, 0, 180, 70)})
+  segs.push({id: "freethrow", points: arcPoints(0, 19, 6, 0, 360, 120)})
+  pushLine([-22, 0], [-22, 14], "corner3_left")
+  pushLine([22, 0], [22, 14], "corner3_right")
+  segs.push({id: "arc3", points: arcPoints(0, 5.25, 23.75, 22, 158, 120)})
+
+  return segs
+}
+
+segmentRows = courtSegments().flatMap(seg =>
+  seg.points.map((p, i) => ({id: seg.id, order: i, x: p.x, y: p.y}))
+)
+```
+
+```{ojs}
+Plot.plot({
+  width: 930,
+  height: 520,
+  margin: 18,
+  x: {domain: [-25, 25], axis: null},
+  y: {domain: [0, 47], axis: null},
+  color: {
+    legend: true,
+    domain: ["Made", "Missed"],
+    range: ["#2e7d32", "#c62828"]
+  },
+  marks: [
+    Plot.line(segmentRows, {x: "x", y: "y", z: "id", stroke: "#8b8f93", strokeWidth: 1.1}),
+    Plot.dot(filteredShots, {
+      x: "loc_x",
+      y: "loc_y",
+      fill: "shot_made",
+      r: 1.5,
+      opacity: 0.45,
+      tip: true
+    })
+  ]
+})
+```
+
+```{ojs}
+Plot.plot({
+  width: 930,
+  height: 520,
+  margin: 18,
+  x: {domain: [-25, 25], axis: null},
+  y: {domain: [0, 47], axis: null},
+  color: {scheme: "YlOrRd", legend: true, label: "Shot density"},
+  marks: [
+    Plot.rect(filteredShots, Plot.bin({fill: "count"}, {x: "loc_x", y: "loc_y"})),
+    Plot.line(segmentRows, {x: "x", y: "y", z: "id", stroke: "#8b8f93", strokeWidth: 1})
+  ]
+})
+```
+
+```{ojs}
+zoneAgg = d3.rollups(
+  filteredShots,
+  v => v.length,
+  d => d.basic_zone
+).map(([zone, count]) => ({zone, count})).sort((a, b) => b.count - a.count)
+
+Plot.plot({
+  width: 930,
+  height: 350,
+  marginLeft: 170,
+  x: {label: "Shot count"},
+  y: {label: null},
+  marks: [
+    Plot.barX(zoneAgg, {x: "count", y: "zone", fill: "#1f4e79"}),
+    Plot.text(zoneAgg, {
+      x: "count",
+      y: "zone",
+      text: d => d.count.toLocaleString(),
+      textAnchor: "start",
+      dx: 6,
+      fill: "#333"
+    })
+  ]
+})
+```

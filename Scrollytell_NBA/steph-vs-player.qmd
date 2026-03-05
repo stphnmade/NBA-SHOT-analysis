@@ -1,0 +1,327 @@
+---
+title: "Steph vs Player"
+format:
+  html:
+    smooth-scroll: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(readr)
+library(dplyr)
+source("R/prepare_data.R")
+
+dir.create("docs/data", recursive = TRUE, showWarnings = FALSE)
+comp <- build_player_comparison_data(min_career_fga = 1000L, sample_made_per_player_season = 30L)
+
+write_csv(comp$player_year, "docs/data/player_year.csv")
+write_csv(comp$made_shots, "docs/data/made_shots.csv")
+write_csv(comp$steph_league, "docs/data/steph_league.csv")
+```
+
+This view tests the hypothesis that **Stephen Curry's 2014-2016 stretch** accelerated league three-point behavior.
+
+```{r}
+library(ggplot2)
+library(sportyR)
+
+steph_2014_2016 <- comp$made_shots |>
+  filter(player_name == "Stephen Curry", season >= 2014, season <= 2016) |>
+  mutate(loc_y_flipped = 47 - loc_y)
+
+geom_basketball(league = "NBA", display_range = "offense", rotation = 90) +
+  geom_point(
+    data = steph_2014_2016,
+    aes(x = loc_x, y = loc_y_flipped),
+    color = "#1f77b4",
+    alpha = 0.2,
+    size = 0.7
+  ) +
+  coord_cartesian(xlim = c(-25, 25), ylim = c(0, 47)) +
+  labs(title = "sportyR half-court: Stephen Curry made shots (2014-15 to 2016-17)") +
+  theme_void()
+```
+
+```{ojs}
+playerYear = await d3.csv("data/player_year.csv", d3.autoType)
+madeShots = await d3.csv("data/made_shots.csv", d3.autoType)
+stephLeague = await d3.csv("data/steph_league.csv", d3.autoType)
+
+players = Array.from(new Set(playerYear.map(d => d.player_name))).sort((a, b) => d3.ascending(a, b))
+compareOptions = players.filter(p => p !== "Stephen Curry")
+
+seasonMeta = Array.from(
+  new Set(playerYear.map(d => +d.season))
+).sort((a, b) => a - b).map(season => ({
+  season,
+  season_label: `${season}-${String((season + 1) % 100).padStart(2, "0")}`
+}))
+
+seasonLookup = new Map(seasonMeta.map(d => [d.season, d.season_label]))
+seasonFromLabel = new Map(seasonMeta.map(d => [d.season_label, d.season]))
+seasonLabels = seasonMeta.map(d => d.season_label)
+
+typeaheadInput = (options, {label, value, placeholder, maxSuggestions = 5}) => {
+  const listId = `suggest-${Math.random().toString(36).slice(2, 10)}`
+  const wrapper = html`<label style="display:grid; gap:0.35rem;">
+    <span>${label} (search)</span>
+    <input type="text" list="${listId}" value="${value ?? ""}" placeholder="${placeholder ?? ""}" style="width:100%;">
+    <datalist id="${listId}"></datalist>
+    <small style="opacity:0.75;">Top ${maxSuggestions} suggestions while typing</small>
+  </label>`
+  const input = wrapper.querySelector("input")
+  const datalist = wrapper.querySelector("datalist")
+  const optionStrings = options.map(option => String(option))
+
+  const refreshSuggestions = () => {
+    const query = input.value.trim().toLowerCase()
+    const matches = optionStrings
+      .filter(option => option.toLowerCase().includes(query))
+      .slice(0, maxSuggestions)
+    datalist.replaceChildren(...matches.map(match => html`<option value="${match}"></option>`))
+  }
+
+  const emitInput = () => {
+    wrapper.value = input.value
+    wrapper.dispatchEvent(new Event("input", {bubbles: true}))
+  }
+
+  input.addEventListener("input", () => {
+    refreshSuggestions()
+    emitInput()
+  })
+  input.addEventListener("change", emitInput)
+
+  wrapper.value = input.value
+  refreshSuggestions()
+  return wrapper
+}
+
+adaptiveInput = (options, config) => (
+  options.length > 10
+    ? typeaheadInput(options, config)
+    : Inputs.select(options, {label: config.label, value: config.value})
+)
+
+resolveSearchValue = (inputValue, options, fallback) => {
+  if (options.length === 0) return fallback ?? null
+  const fallbackValue = options.includes(fallback) ? fallback : options[0]
+  const query = String(inputValue ?? "").trim().toLowerCase()
+  if (!query) return fallbackValue
+  const exact = options.find(option => String(option).toLowerCase() === query)
+  if (exact) return exact
+  const partial = options.find(option => String(option).toLowerCase().includes(query))
+  return partial ?? fallbackValue
+}
+
+defaultStartLabel = seasonLookup.get(2014) ?? seasonLabels[0]
+defaultEndLabel = seasonLookup.get(2016) ?? seasonLabels[seasonLabels.length - 1]
+
+viewof comparePlayerInput = adaptiveInput(compareOptions, {
+  label: "Compare player",
+  value: "Damian Lillard",
+  placeholder: "Type player name..."
+})
+
+comparePlayer = resolveSearchValue(comparePlayerInput, compareOptions, "Damian Lillard")
+
+viewof seasonStartInput = adaptiveInput(seasonLabels, {
+  label: "Season start",
+  value: defaultStartLabel,
+  placeholder: "Type season, e.g. 2019-20"
+})
+
+viewof seasonEndInput = adaptiveInput(seasonLabels, {
+  label: "Season end",
+  value: defaultEndLabel,
+  placeholder: "Type season, e.g. 2020-21"
+})
+
+seasonStartLabel = resolveSearchValue(seasonStartInput, seasonLabels, defaultStartLabel)
+seasonEndLabel = resolveSearchValue(seasonEndInput, seasonLabels, defaultEndLabel)
+seasonStart = seasonFromLabel.get(seasonStartLabel)
+seasonEnd = seasonFromLabel.get(seasonEndLabel)
+startSeason = Math.min(seasonStart, seasonEnd)
+endSeason = Math.max(seasonStart, seasonEnd)
+windowLabel = `${seasonLookup.get(startSeason)} to ${seasonLookup.get(endSeason)}`
+
+windowTeamOptions = ["All", ...Array.from(new Set(
+  madeShots
+    .filter(d => d.season >= startSeason && d.season <= endSeason)
+    .map(d => d.team_name)
+    .filter(Boolean)
+)).sort((a, b) => d3.ascending(a, b))]
+
+viewof teamFilterInput = adaptiveInput(windowTeamOptions, {
+  label: "Team filter",
+  value: "All",
+  placeholder: "Type team name..."
+})
+
+teamFilter = resolveSearchValue(teamFilterInput, windowTeamOptions, "All")
+
+inWindow = d => d.season >= startSeason && d.season <= endSeason
+withTeam = d => teamFilter === "All" || d.team_name === teamFilter
+
+stephRows = playerYear.filter(d => d.player_name === "Stephen Curry" && inWindow(d) && withTeam(d))
+compRows = playerYear.filter(d => d.player_name === comparePlayer && inWindow(d) && withTeam(d))
+
+summarizePlayer = rows => {
+  const fga = d3.sum(rows, d => d.fga)
+  const fgm = d3.sum(rows, d => d.fgm)
+  const fga3 = d3.sum(rows, d => d.fga3)
+  const fgm3 = d3.sum(rows, d => d.fgm3)
+  const games = d3.sum(rows, d => d.games)
+  return {
+    seasons: rows.length,
+    fg_pct: fga > 0 ? fgm / fga : NaN,
+    tp_pct: fga3 > 0 ? fgm3 / fga3 : NaN,
+    efg: fga > 0 ? (fgm + 0.5 * fgm3) / fga : NaN,
+    tpa_per_game: games > 0 ? fga3 / games : NaN,
+    tpa_per_season: rows.length > 0 ? fga3 / rows.length : NaN
+  }
+}
+
+stephAgg = summarizePlayer(stephRows)
+compAgg = summarizePlayer(compRows)
+
+fmtPct = v => Number.isFinite(v) ? d3.format(".1%")(v) : "n/a"
+fmtNum = v => Number.isFinite(v) ? d3.format(".2f")(v) : "n/a"
+
+md`
+### Window summary (${windowLabel}) ${teamFilter === "All" ? "" : `| Team: ${teamFilter}`}
+
+| Metric | Stephen Curry | ${comparePlayer} |
+|---|---:|---:|
+| FG% | ${fmtPct(stephAgg.fg_pct)} | ${fmtPct(compAgg.fg_pct)} |
+| 3P% | ${fmtPct(stephAgg.tp_pct)} | ${fmtPct(compAgg.tp_pct)} |
+| eFG% | ${fmtPct(stephAgg.efg)} | ${fmtPct(compAgg.efg)} |
+| 3PA / game | ${fmtNum(stephAgg.tpa_per_game)} | ${fmtNum(compAgg.tpa_per_game)} |
+| 3PA / season | ${fmtNum(stephAgg.tpa_per_season)} | ${fmtNum(compAgg.tpa_per_season)} |
+`
+```
+
+```{ojs}
+trendRows = playerYear
+  .filter(d => (d.player_name === "Stephen Curry" || d.player_name === comparePlayer))
+  .filter(d => teamFilter === "All" || d.team_name === teamFilter)
+  .map(d => ({...d, player: d.player_name}))
+
+Plot.plot({
+  width: 930,
+  height: 380,
+  x: {label: "Season", tickFormat: d => seasonLookup.get(d) ?? String(d)},
+  y: {label: "3PA per game"},
+  color: {legend: true},
+  marks: [
+    Plot.lineY(trendRows, {x: "season", y: "tpa_per_game", stroke: "player"}),
+    Plot.dot(trendRows, {x: "season", y: "tpa_per_game", fill: "player"})
+  ]
+})
+```
+
+```{ojs}
+Plot.plot({
+  width: 930,
+  height: 380,
+  x: {label: "Season", tickFormat: d => seasonLookup.get(d) ?? String(d)},
+  y: {label: "3P%", percent: true},
+  color: {legend: true},
+  marks: [
+    Plot.lineY(trendRows, {x: "season", y: "tp_pct", stroke: "player"}),
+    Plot.dot(trendRows, {x: "season", y: "tp_pct", fill: "player"})
+  ]
+})
+```
+
+```{ojs}
+arcPoints = (cx, cy, r, startDeg, endDeg, steps = 80) => {
+  const pts = []
+  const start = startDeg * Math.PI / 180
+  const end = endDeg * Math.PI / 180
+  for (let i = 0; i <= steps; i++) {
+    const t = start + (end - start) * (i / steps)
+    pts.push({x: cx + r * Math.cos(t), y: cy + r * Math.sin(t)})
+  }
+  return pts
+}
+
+courtSegments = () => {
+  const segs = []
+  const pushLine = (a, b, id) => segs.push({id, points: [{x: a[0], y: a[1]}, {x: b[0], y: b[1]}]})
+
+  pushLine([-25, 0], [25, 0], "baseline")
+  pushLine([-25, 0], [-25, 47], "left_sideline")
+  pushLine([25, 0], [25, 47], "right_sideline")
+  pushLine([-25, 47], [25, 47], "halfcourt")
+  pushLine([-8, 0], [-8, 19], "paint_left")
+  pushLine([8, 0], [8, 19], "paint_right")
+  pushLine([-8, 19], [8, 19], "paint_top")
+
+  segs.push({id: "restricted", points: arcPoints(0, 5.25, 4, 0, 180, 70)})
+  segs.push({id: "freethrow", points: arcPoints(0, 19, 6, 0, 360, 120)})
+  pushLine([-22, 0], [-22, 14], "corner3_left")
+  pushLine([22, 0], [22, 14], "corner3_right")
+  segs.push({id: "arc3", points: arcPoints(0, 5.25, 23.75, 22, 158, 120)})
+
+  return segs
+}
+
+segmentRows = courtSegments().flatMap(seg =>
+  seg.points.map((p, i) => ({id: seg.id, order: i, x: p.x, y: p.y}))
+)
+
+windowShotsBase = madeShots.filter(d => d.season >= startSeason && d.season <= endSeason)
+windowShotsFiltered = teamFilter === "All" ? windowShotsBase : windowShotsBase.filter(d => d.team_name === teamFilter)
+stephShots = windowShotsFiltered.filter(d => d.player_name === "Stephen Curry")
+compShots = windowShotsFiltered.filter(d => d.player_name === comparePlayer)
+
+shotMap = (rows, title, color) => Plot.plot({
+  width: 450,
+  height: 430,
+  margin: 18,
+  x: {domain: [-25, 25], axis: null},
+  y: {domain: [0, 47], axis: null},
+  marks: [
+    Plot.line(segmentRows, {x: "x", y: "y", z: "id", stroke: "#666", strokeWidth: 1}),
+    Plot.dot(rows, {x: "loc_x", y: "loc_y", r: 1.5, fill: color, opacity: 0.33, tip: true}),
+    Plot.text([{x: 0, y: 46.2, label: title}], {x: "x", y: "y", text: "label", fontWeight: "bold", dy: -6})
+  ]
+})
+
+html`<div style="display:flex;gap:20px;flex-wrap:wrap;">
+  <div>${shotMap(stephShots, `Stephen Curry made shots (${windowLabel})`, "#1f77b4")}</div>
+  <div>${shotMap(compShots, `${comparePlayer} made shots (${windowLabel})`, "#d95f02")}</div>
+</div>`
+```
+
+```{ojs}
+impactRows = stephLeague.map(d => ({
+  season: d.season,
+  series: "League 3PA rate index",
+  value: d.league_three_rate_index
+})).concat(
+  stephLeague.map(d => ({
+    season: d.season,
+    series: "Steph 3PA/G index",
+    value: d.steph_tpa_index
+  }))
+)
+
+Plot.plot({
+  width: 930,
+  height: 360,
+  x: {label: "Season", tickFormat: d => seasonLookup.get(d) ?? String(d)},
+  y: {label: "Index (2013-14 = 100)"},
+  color: {legend: true},
+  marks: [
+    Plot.ruleX([2019], {stroke: "#d00000", strokeDasharray: "3,3"}),
+    Plot.lineY(impactRows, {x: "season", y: "value", stroke: "series"}),
+    Plot.dot(impactRows, {x: "season", y: "value", fill: "series"}),
+    Plot.ruleX([2014, 2016], {stroke: "#999", strokeDasharray: "4,4"})
+  ]
+})
+```

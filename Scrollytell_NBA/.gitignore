@@ -1,22 +1,21 @@
 /.quarto/
-_site
-
-# Quarto build output
 _site/
-*.html
 
 # R build artifacts
 .Rhistory
 .RData
 .Rproj.user/
 .Ruserdata
-.Rproj.user/*
 *.Rproj
 
-# Python/reticulate junk if present
+# Python junk
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 
 # OS / editor junk
 .DS_Store
+
+# Quarto temp artifacts
+**/*.quarto_ipynb
+data/shot_explorer_sample.csv

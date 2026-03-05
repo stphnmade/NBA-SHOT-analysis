@@ -1,13 +1,33 @@
 project:
   type: website
+  output-dir: docs
+
+website:
+  title: "NBA Shot Analysis"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Story
+      - href: steph-vs-player.qmd
+        text: Steph vs Player
+      - href: player-vs-player.qmd
+        text: Player vs Player
+      - href: player-dashboard.qmd
+        text: Player Dashboard
+      - href: shot-explorer.qmd
+        text: Shot Explorer
+      - href: about.qmd
+        text: About
 
 format:
   html:
-    theme: cosmo
+    theme: flatly
+    css: styles.css
+    toc: false
 
 execute:
   enabled: true
   eval: true
-  echo: true
-
-
+  echo: false
+  warning: false
+  message: false

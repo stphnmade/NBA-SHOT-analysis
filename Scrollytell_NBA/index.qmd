@@ -1,10 +1,9 @@
 ---
-title: "When Did NBA Shooting Change?"
-subtitle: "A scrollytelling deep dive into threes, midrange, and efficiency"
-author: "Stphn"
+title: "The Story: How the Three Took Over"
+subtitle: "A scrollytelling narrative centered on Stephen Curry's influence"
 format:
   html:
-    theme: cosmo
+    theme: darkly
     toc: false
     smooth-scroll: true
 execute:
@@ -13,217 +12,326 @@ execute:
   message: false
 ---
 
-```{r setup-data, include=FALSE}
-# Libraries
-library(tidyverse)
-library(lubridate)
-library(janitor)
-library(ggplot2)
-
-# Load data
-shots <- readRDS("data/NBA_All_Shots.rds") |> clean_names()
-
-
-# Normalize fields (be tolerant if some cols are missing)
-to_char <- function(x) if (x %in% names(shots)) as.character(.data[[x]]) else NA_character_
-shots <- shots |>
-  mutate(
-    shot_type    = toupper(if ("shot_type"    %in% names(shots)) as.character(shot_type) else NA_character_),
-    shot_made    = if ("shot_made"   %in% names(shots)) as.logical(shot_made) else NA,
-    basic_zone   = if ("basic_zone"  %in% names(shots)) as.character(basic_zone) else NA_character_,
-    zone_range   = if ("zone_range"  %in% names(shots)) as.character(zone_range) else NA_character_,
-    shot_distance= if ("shot_distance" %in% names(shots)) as.numeric(shot_distance) else NA_real_
-  )
-
-#Changing shot zone names to more familiar terms
-shots |>
-  mutate(
-    basic_zone = case_when(
-      grepl("^\\s*Restricted Area\\s*$", basic_zone, ignore.case = TRUE) ~ "Restricted Area",
-      grepl("^\\s*In the Paint \\(non-RA\\)\\s*$", basic_zone, ignore.case = TRUE) ~ "Paint (non-RA)",
-      grepl("^\\s*Mid-range\\s*$", basic_zone, ignore.case = TRUE) ~ "Midrange",
-      grepl("^\\s*Left Corner 3\\s*$", basic_zone, ignore.case = TRUE) ~ "Corner 3",
-      grepl("^\\s*Right Corner 3\\s*$", basic_zone, ignore.case = TRUE) ~ "Corner 3",
-      grepl("^\\s*Above the Break 3\\s*$", basic_zone, ignore.case = TRUE) ~ "Above the Break",
-      grepl("^\\s*Backcourt\\s*$", basic_zone, ignore.case = TRUE) ~ "Backcourt",
-      TRUE ~ NA_character_
-    ))
-
-
-```
-
-
-```{r}
-#| label: Season_data
-# Season aggregates
-season_summ <- shots |>
-  group_by(season_1) |>
-  summarise(
-    fga      = n(),
-    fgm      = sum(shot_made %in% TRUE, na.rm = TRUE),
-    fga_3   = sum(grepl("3PT", shot_type, ignore.case = TRUE), na.rm = TRUE),
-    fgm_3   = sum(grepl("3PT", shot_type, ignore.case = TRUE) & shot_made, na.rm = TRUE),
-    share_mid   = mean(basic_zone == "Midrange", na.rm = TRUE),
-    share_ra    = mean(basic_zone == "Restricted Area", na.rm = TRUE),
-    share_paint = mean(basic_zone == "In the Paint (non-RA)", na.rm = TRUE),
-    share_c3    = mean(basic_zone %in% c("Left Corner 3","Right Corner 3"), na.rm = TRUE),
-    share_atb   = mean(basic_zone == "Above the Break", na.rm = TRUE),
-    med_dist = median(shot_distance, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
-  mutate(
-    three_rate = if_else(fga > 0, fga_3 / fga, NA_real_),
-    efg = if_else(fga > 0, (fgm + 0.5 * fgm_3) / fga, NA_real_)
-  ) |>
-  arrange(season_1)
-
-```
-
-
-```{r}
-season_summ <- season_summ|>
-  rename(season = season_1)|>
-  mutate(season = as.integer(season))
-```
-
-
-```{r}
-# Long format for stacked area (guard against missing cols)
-needed <- c("share_ra","share_paint","share_mid","share_c3","share_atb")
-missing_needed <- setdiff(needed, names(season_summ))
-if (length(missing_needed)) {
-  # create missing shares as 0 to avoid errors
-  season_summ[missing_needed] <- 0
-}
-selection_long <- season_summ |>
-  select(season, all_of(needed)) |>
-  pivot_longer(-season, names_to = "bucket", values_to = "share") |>
-  mutate(
-    bucket = factor(
-      bucket,
-      levels = c("share_ra","share_paint","share_mid","share_c3","share_atb"),
-      labels = c("Restricted Area","Paint (non-RA)","Midrange","Corner 3","Above the Break")
-    )
-  )
-
-# X-axis breaks helper
-season_order  <- season_summ$season
-season_breaks <- unique(season_order[seq(1, length(season_order), length.out = min(10, length(season_order)))])
-```
-
-
-## Three-Point Attempt Rate
-
-::: {.scrolly}
-::: {.steps}
-
-### 1) Baseline
-Early seasons show a modest share of threes. Teams are feeling out spacing and personnel fits rather than building entire offenses around the arc.
-
-### 2) Acceleration
-Watch for the slope to steepen. That’s the moment organizations shift philosophy—lineups, playbooks, and shot diets all re-orient toward the 3.
-
-### 3) Stabilization
-If the curve flattens, it hints at an equilibrium: defenses adapt, lineups balance rim pressure with kick-outs, and the league settles near a ceiling.
-
-:::
-
-::: {.graphic}
-```{r}
-# simple, readable line plot of 3PA share by season
-library(ggplot2)
-library(scales)
-
-ggplot(season_summ, aes(x = season, y = three_rate, group = 1)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 1.8) +
-  scale_y_continuous(labels = percent_format(accuracy = 1)) +
-  scale_x_discrete() +
-  labs(
-    x = NULL, y = "3PA share of all FGA",
-    title = "Three-Point Attempt Rate Over Time",
-    subtitle = "Share of field-goal attempts that are threes, by season"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(hjust = 0.5))
-```
-
-
-:::
-:::
-
-### optional: add a subtle inflection callout
-If you want to mark a “when the change happened” heuristic on this same chart, drop this **after** the block above (uses your existing `season_summ`):
-
-```{r}
-# Heuristic: first season where 3PA share >= 30%
-inflect_season <- season_summ$season[which(season_summ$three_rate >= 0.30)[1]]
-
-if (!is.na(inflect_season)) {
-  cat(paste0("> **Takeaway:** A clear inflection appears by **", inflect_season, "** when ≥30% of shots are threes.\n"))
-}
-```
-
-### A league re-written by the three
-Narration here…
-
-### Context
-Narration here…
-
-:::
-
-::: {.graphic}
-```{r}
-ggplot(season_summ, aes(season, three_rate, group=1)) +
-  geom_line(linewidth=1.2) + 
-  geom_point() +
-  scale_y_continuous(labels = scales::percent) +
-  scale_x_continuous(breaks = unique(season_summ$season), labels = as.integer(unique(season_summ$season))) +
-  labs(x = "Season", y = "3PA share", title = "Three-Point Attempt Rate Over Time") +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(hjust = 0.5))
-
-  
-
-```
-
-:::
-:::
-
-
-Where Do Shots Come From?
-
-::: {.scrolly}
-::: {.steps}
-
-Geometry of modern offense
-
-Narration here…
-:::
-
-::: {.graphic}
-
-```{r}
+```{r setup}
 library(dplyr)
 library(ggplot2)
+library(scales)
+source("R/prepare_data.R")
 
-zone_levels <- c("Paint (non-RA)","Midrange","Corner 3","Above the Break")
+nba <- load_shot_data(sample_per_group = 1200L)
+comp <- build_player_comparison_data(min_career_fga = 1000L, sample_made_per_player_season = 30L)
 
-non_ra <- selection_long %>%
-  filter(bucket != "Restricted Area") %>%
-  mutate(season = as.integer(season),
-         bucket = factor(bucket, levels = zone_levels)) %>%
-  group_by(season) %>%
-  mutate(share_nonRA = share / sum(share)) %>%
-  ungroup()
+season_summ <- nba$season_summ
+selection_long <- nba$selection_long
 
-ggplot(non_ra, aes(x = factor(season), y = bucket, fill = share_nonRA)) +
-  geom_tile() +
-  scale_fill_viridis_c(labels = scales::percent, name = "Share of non-RA") +
-  labs(x = NULL, y = NULL,
-       title = "Non-RA Shot Mix by Zone (Heatmap)") +
-  theme_minimal(base_size = 14) +
-  theme(panel.grid = element_blank())
+season_breaks <- season_summ$season
+season_label_lookup <- setNames(season_summ$season_label, season_summ$season)
+label_season <- function(x) unname(season_label_lookup[as.character(x)])
 
+steph_year <- comp$player_year |>
+  filter(player_name == "Stephen Curry") |>
+  arrange(season)
 
+peak_row <- steph_year |>
+  slice_max(fga3, n = 1, with_ties = FALSE)
+peak_season <- peak_row$season[[1]]
+peak_season_label <- peak_row$season_label[[1]]
+peak_3pa <- peak_row$fga3[[1]]
+peak_3pm <- peak_row$fgm3[[1]]
+
+peer_trends <- comp$player_year |>
+  filter(player_name %in% c("Stephen Curry", "Damian Lillard", "James Harden", "Klay Thompson"))
+
+impact <- comp$league_year |>
+  left_join(
+    steph_year |>
+      transmute(season, steph_tpa_per_game = tpa_per_game),
+    by = "season"
+  ) |>
+  mutate(
+    league_three_rate_index = 100 * league_three_rate / first(league_three_rate),
+    steph_tpa_index = 100 * steph_tpa_per_game / first(steph_tpa_per_game)
+  )
+
+covid_season <- 2019L
+covid_label <- season_label_from_start(covid_season)
 ```
+
+::: {.story-lead}
+People attempted threes before Steph Curry. The shift is that after his peak stretch, the league restructured around that shot profile.
+:::
+
+::: {.story-scrolly}
+::: {.story-graphic}
+
+::: {.story-figure data-figure="1"}
+```{r}
+ggplot(season_summ, aes(season, three_rate)) +
+  geom_rect(
+    inherit.aes = FALSE,
+    xmin = min(season_summ$season) - 0.5,
+    xmax = 2014.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#4a5568",
+    alpha = 0.22
+  ) +
+  geom_rect(
+    inherit.aes = FALSE,
+    xmin = covid_season - 0.5,
+    xmax = covid_season + 0.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#f94144",
+    alpha = 0.14
+  ) +
+  geom_line(linewidth = 1.4, color = "#8ecae6") +
+  geom_point(size = 2.1, color = "#8ecae6") +
+  annotate(
+    "text",
+    x = covid_season,
+    y = max(season_summ$three_rate, na.rm = TRUE) * 0.96,
+    label = paste0("COVID season: ", covid_label),
+    size = 3.5,
+    color = "#fbc4ab"
+  ) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_x_continuous(breaks = season_breaks, labels = label_season(season_breaks)) +
+  labs(
+    title = "Before the inflection",
+    subtitle = "League 3PA share was growing, but slowly",
+    x = NULL,
+    y = "3PA share"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+:::
+
+::: {.story-figure data-figure="2"}
+```{r}
+peer_breaks <- sort(unique(peer_trends$season))
+
+ggplot(peer_trends, aes(season, tpa_per_game, color = player_name)) +
+  geom_line(linewidth = 1.25) +
+  geom_point(size = 1.6) +
+  scale_x_continuous(breaks = peer_breaks, labels = label_season(peer_breaks)) +
+  labs(
+    title = "Not just threes, but volume at scale",
+    subtitle = "Curry separates from elite peers in sustained 3PA/game",
+    x = NULL,
+    y = "3PA per game",
+    color = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+:::
+
+::: {.story-figure data-figure="3"}
+```{r}
+steph_peak_plot <- steph_year |>
+  mutate(peak_flag = if_else(season == peak_season, "Peak season", "Other seasons"))
+
+ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
+  geom_col(width = 0.72) +
+  geom_text(
+    data = steph_peak_plot |> filter(season == peak_season),
+    aes(label = paste0("Peak: ", comma(fga3), " attempts\n", comma(fgm3), " makes")),
+    vjust = -0.35,
+    size = 4.1,
+    color = "#111"
+  ) +
+  scale_fill_manual(values = c("Peak season" = "#ffb703", "Other seasons" = "#6aa5d8")) +
+  scale_x_continuous(breaks = steph_peak_plot$season, labels = steph_peak_plot$season_label) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Curry's peak season set the benchmark",
+    subtitle = paste0("Most 3PA in one season: ", peak_season_label),
+    x = NULL,
+    y = "3PA",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+:::
+
+::: {.story-figure data-figure="4"}
+```{r}
+impact_long <- bind_rows(
+  impact |>
+    transmute(season, series = "League 3PA rate index", value = league_three_rate_index),
+  impact |>
+    transmute(season, series = "Steph 3PA/game index", value = steph_tpa_index)
+)
+
+impact_breaks <- impact$season
+
+ggplot(impact_long, aes(season, value, color = series)) +
+  geom_rect(
+    inherit.aes = FALSE,
+    xmin = covid_season - 0.5,
+    xmax = covid_season + 0.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#f94144",
+    alpha = 0.12
+  ) +
+  geom_line(linewidth = 1.35) +
+  geom_point(size = 1.7) +
+  geom_vline(xintercept = c(2014, 2016), linetype = "dashed", color = "#9aa1aa") +
+  scale_x_continuous(breaks = impact_breaks, labels = label_season(impact_breaks)) +
+  labs(
+    title = "2014-2016 is the acceleration window",
+    subtitle = "League behavior catches up after Curry's explosive years",
+    x = NULL,
+    y = "Index (2013-14 = 100)",
+    color = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+:::
+
+::: {.story-figure data-figure="5"}
+```{r}
+ggplot(selection_long, aes(season, share, fill = bucket)) +
+  geom_area(color = "#0d1117", linewidth = 0.2) +
+  geom_vline(xintercept = covid_season, color = "#fbc4ab", linetype = "dotted") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_x_continuous(breaks = season_breaks, labels = label_season(season_breaks)) +
+  scale_fill_manual(
+    values = c(
+      "Restricted Area" = "#8ecae6",
+      "Paint (non-RA)" = "#7db9de",
+      "Midrange" = "#adb5bd",
+      "Corner 3" = "#f4a261",
+      "Above the Break" = "#e76f51"
+    )
+  ) +
+  labs(
+    title = "The modern shot diet",
+    subtitle = "Above-the-break threes scale up while midrange compresses",
+    x = NULL,
+    y = "Share of attempts",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+:::
+
+:::
+
+::: {.story-steps}
+
+::: {.story-step .align-right data-figure="1"}
+::: {.step-card}
+### 1) The baseline: threes existed, but did not dominate
+Before the Curry inflection years, teams were adding threes gradually. The league still leaned heavily on traditional shot balances.
+:::
+:::
+
+::: {.story-step .align-left data-figure="2"}
+::: {.step-card}
+### 2) Shot gravity changes the volume ceiling
+Curry did not just shoot efficiently. He sustained extreme three-point volume, pulling the baseline upward for everyone.
+:::
+:::
+
+::: {.story-step .align-center data-figure="3"}
+::: {.step-card}
+### 3) Peak year analysis
+His highest-volume three-point season reached **`r comma(peak_3pa)` attempts** and **`r comma(peak_3pm)` makes** in **`r peak_season_label`**.
+:::
+:::
+
+::: {.story-step .align-right data-figure="4"}
+::: {.step-card}
+### 4) 2014-2016 hypothesis window
+This is where Curry's rise and the league's post-shift trajectory align most clearly.
+:::
+:::
+
+::: {.story-step .align-left data-figure="5"}
+::: {.step-card}
+### 5) Structural shift, then COVID disruption
+By **`r covid_label`**, the league was already deep into long-range reallocation, and the pandemic season marked a visible disruption on top of that trend.
+:::
+:::
+
+:::
+:::
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const steps = Array.from(document.querySelectorAll(".story-step"));
+  const figures = Array.from(document.querySelectorAll(".story-figure"));
+
+  const activateFigure = (figureId) => {
+    figures.forEach((figure) => {
+      const isActive = figure.dataset.figure === figureId;
+      figure.classList.toggle("is-active", isActive);
+    });
+    steps.forEach((step) => {
+      const isActive = step.dataset.figure === figureId;
+      step.classList.toggle("is-active", isActive);
+    });
+  };
+
+  const updateActiveFromViewport = () => {
+    const focusY = window.innerHeight * 0.48;
+    let bestStep = null;
+    let bestDistance = Infinity;
+
+    steps.forEach((step) => {
+      const rect = step.getBoundingClientRect();
+      const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+      if (!inView) return;
+
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.abs(centerY - focusY);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestStep = step;
+      }
+    });
+
+    if (bestStep) activateFigure(bestStep.dataset.figure);
+  };
+
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      updateActiveFromViewport();
+      ticking = false;
+    });
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", updateActiveFromViewport);
+  updateActiveFromViewport();
+});
+</script>

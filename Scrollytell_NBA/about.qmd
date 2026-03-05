@@ -2,4 +2,34 @@
 title: "About"
 ---
 
-About this site
+## Project Scope
+
+This project tracks how NBA shot selection and efficiency changed from 2013 through 2024 using league-wide play-by-play shot data.
+
+## Data and Method
+
+- Source dataset: `mexwell/nba-shots` (Kaggle).
+- Main working file: `data/NBA_All_Shots.rds`.
+- Metrics:
+  - `three_rate` = three-point attempts / all field-goal attempts.
+  - `efg` = (FGM + 0.5 * 3PM) / FGA.
+  - Zone shares by season (restricted area, paint non-RA, midrange, corner 3, above the break).
+
+## Website Structure
+
+- `Story`: immersive scrollytelling narrative focused on league change and Curry's role.
+- `Steph vs Player`: compare Curry to another player on accuracy, half-court made-shot map, and 3PA evolution.
+- `Player vs Player`: direct player comparisons with volume/efficiency metrics and shot maps.
+- `Player Dashboard`: single-player deep dive across metrics, trends, and made-shot profile.
+- `Shot Explorer`: general interactive filtering by season, shot type, and result.
+
+## Deployment
+
+Render with:
+
+```bash
+cd Scrollytell_NBA
+quarto render
+```
+
+The site is emitted to `Scrollytell_NBA/docs`.

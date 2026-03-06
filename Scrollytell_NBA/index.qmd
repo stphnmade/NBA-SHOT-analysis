@@ -53,12 +53,22 @@ impact <- comp$league_year |>
     steph_tpa_index = 100 * steph_tpa_per_game / first(steph_tpa_per_game)
   )
 
-covid_season <- 2019L
-covid_label <- season_label_from_start(covid_season)
+injury_season <- 2019L
+injury_label <- season_label_from_start(injury_season)
+covid_season <- injury_season
+covid_label <- injury_label
 ```
 
 ::: {.story-lead}
-People attempted threes before Steph Curry. The shift is that after his peak stretch, the league restructured around that shot profile.
+People attempted threes before Steph Curry. The shift is that after his peak stretch, the league restructured around that shot profile.  
+Even in **`r injury_label`**, when Curry was mostly absent, league three-point behavior stayed elevated.
+:::
+
+::: {.callout-note}
+## Injury Context Used In The Visuals
+In the **2019-20** season, Stephen Curry broke his left hand (second metacarpal) on **October 30, 2019**, needed surgery, and missed **58 straight games**.  
+He played only **5 games** that season (also affected by the COVID suspension), and Golden State finished **15-50**.  
+He briefly returned in March 2020, then used the long break to rehab into a more efficient post-injury version.
 :::
 
 ::: {.story-scrolly}
@@ -78,8 +88,8 @@ ggplot(season_summ, aes(season, three_rate)) +
   ) +
   geom_rect(
     inherit.aes = FALSE,
-    xmin = covid_season - 0.5,
-    xmax = covid_season + 0.5,
+    xmin = injury_season - 0.5,
+    xmax = injury_season + 0.5,
     ymin = -Inf,
     ymax = Inf,
     fill = "#f94144",
@@ -89,9 +99,9 @@ ggplot(season_summ, aes(season, three_rate)) +
   geom_point(size = 2.1, color = "#8ecae6") +
   annotate(
     "text",
-    x = covid_season,
+    x = injury_season,
     y = max(season_summ$three_rate, na.rm = TRUE) * 0.96,
-    label = paste0("COVID season: ", covid_label),
+    label = paste0("Curry injury + COVID: ", injury_label),
     size = 3.5,
     color = "#fbc4ab"
   ) +
@@ -116,12 +126,22 @@ ggplot(season_summ, aes(season, three_rate)) +
 peer_breaks <- sort(unique(peer_trends$season))
 
 ggplot(peer_trends, aes(season, tpa_per_game, color = player_name)) +
+  geom_rect(
+    inherit.aes = FALSE,
+    xmin = injury_season - 0.5,
+    xmax = injury_season + 0.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#f94144",
+    alpha = 0.12
+  ) +
   geom_line(linewidth = 1.25) +
   geom_point(size = 1.6) +
+  geom_vline(xintercept = injury_season, linetype = "dashed", color = "#fbc4ab") +
   scale_x_continuous(breaks = peer_breaks, labels = label_season(peer_breaks)) +
   labs(
     title = "Not just threes, but volume at scale",
-    subtitle = "Curry separates from elite peers in sustained 3PA/game",
+    subtitle = "Curry separates from elite peers in sustained 3PA/game, including the injury window",
     x = NULL,
     y = "3PA per game",
     color = NULL
@@ -141,6 +161,15 @@ steph_peak_plot <- steph_year |>
   mutate(peak_flag = if_else(season == peak_season, "Peak season", "Other seasons"))
 
 ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
+  geom_rect(
+    inherit.aes = FALSE,
+    xmin = injury_season - 0.5,
+    xmax = injury_season + 0.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#f94144",
+    alpha = 0.12
+  ) +
   geom_col(width = 0.72) +
   geom_text(
     data = steph_peak_plot |> filter(season == peak_season),
@@ -154,7 +183,7 @@ ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
   scale_y_continuous(labels = comma) +
   labs(
     title = "Curry's peak season set the benchmark",
-    subtitle = paste0("Most 3PA in one season: ", peak_season_label),
+    subtitle = paste0("Most 3PA in one season: ", peak_season_label, " | Injury break highlighted at ", injury_label),
     x = NULL,
     y = "3PA",
     fill = NULL
@@ -182,8 +211,8 @@ impact_breaks <- impact$season
 ggplot(impact_long, aes(season, value, color = series)) +
   geom_rect(
     inherit.aes = FALSE,
-    xmin = covid_season - 0.5,
-    xmax = covid_season + 0.5,
+    xmin = injury_season - 0.5,
+    xmax = injury_season + 0.5,
     ymin = -Inf,
     ymax = Inf,
     fill = "#f94144",
@@ -191,6 +220,7 @@ ggplot(impact_long, aes(season, value, color = series)) +
   ) +
   geom_line(linewidth = 1.35) +
   geom_point(size = 1.7) +
+  geom_vline(xintercept = injury_season, linetype = "dashed", color = "#fbc4ab") +
   geom_vline(xintercept = c(2014, 2016), linetype = "dashed", color = "#9aa1aa") +
   scale_x_continuous(breaks = impact_breaks, labels = label_season(impact_breaks)) +
   labs(
@@ -213,7 +243,15 @@ ggplot(impact_long, aes(season, value, color = series)) +
 ```{r}
 ggplot(selection_long, aes(season, share, fill = bucket)) +
   geom_area(color = "#0d1117", linewidth = 0.2) +
-  geom_vline(xintercept = covid_season, color = "#fbc4ab", linetype = "dotted") +
+  geom_vline(xintercept = injury_season, color = "#fbc4ab", linetype = "dotted") +
+  annotate(
+    "text",
+    x = injury_season,
+    y = 0.98,
+    label = paste0("Injury season: ", injury_label),
+    size = 3.3,
+    color = "#fbc4ab"
+  ) +
   scale_y_continuous(labels = percent_format(accuracy = 1)) +
   scale_x_continuous(breaks = season_breaks, labels = label_season(season_breaks)) +
   scale_fill_manual(
@@ -276,7 +314,8 @@ This is where Curry's rise and the league's post-shift trajectory align most cle
 ::: {.story-step .align-left data-figure="5"}
 ::: {.step-card}
 ### 5) Structural shift, then COVID disruption
-By **`r covid_label`**, the league was already deep into long-range reallocation, and the pandemic season marked a visible disruption on top of that trend.
+By **`r injury_label`**, Curry was mostly out, but league three-point volume still held.  
+That supports your narrative: the shot diet change persisted beyond one player being active game-to-game.
 :::
 :::
 

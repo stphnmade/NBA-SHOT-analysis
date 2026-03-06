@@ -22,6 +22,13 @@ write_csv(comp$made_shots, "docs/data/made_shots.csv")
 
 Explore a single player's profile across efficiency, shot volume, and made-shot location.
 
+::: {.callout-note}
+## Injury Note For Interpretation
+Stephen Curry broke his left hand on **October 30, 2019** (season **2019-20**), underwent surgery, and missed **58 consecutive games**.  
+He played only **5 games** that season, briefly returned in March 2020, and Golden State finished **15-50**.  
+Trend visuals mark **2019-20** so you can see the break in form and what happened around that season.
+:::
+
 ```{ojs}
 playerYear = await d3.csv("data/player_year.csv", d3.autoType)
 madeShots = await d3.csv("data/made_shots.csv", d3.autoType)
@@ -38,6 +45,9 @@ seasonMeta = Array.from(
 seasonLookup = new Map(seasonMeta.map(d => [d.season, d.season_label]))
 seasonFromLabel = new Map(seasonMeta.map(d => [d.season_label, d.season]))
 seasonLabels = seasonMeta.map(d => d.season_label)
+injurySeason = 2019
+injuryLabel = seasonLookup.get(injurySeason) ?? "2019-20"
+injuryNote = `Injury context: broken left hand (${injuryLabel}), 58-game absence, 5 games played, Warriors 15-50.`
 
 typeaheadInput = (options, {label, value, placeholder, maxSuggestions = 5}) => {
   const listId = `suggest-${Math.random().toString(36).slice(2, 10)}`
@@ -166,6 +176,8 @@ fmtInt = v => Number.isFinite(v) ? d3.format(",.0f")(v) : "n/a"
 md`
 ### ${selectedPlayer} (${windowLabel}) ${teamFilter === "All" ? "" : `| Team: ${teamFilter}`}
 
+${injuryNote}
+
 | Metric | Value |
 |---|---:|
 | FG% | ${fmtPct(agg.fg_pct)} |
@@ -185,6 +197,7 @@ Plot.plot({
   x: {label: "Season", tickFormat: d => seasonLookup.get(d) ?? String(d)},
   y: {label: "3PA per game"},
   marks: [
+    Plot.ruleX([injurySeason], {stroke: "#d00000", strokeDasharray: "4,4"}),
     Plot.lineY(playerRows, {x: "season", y: "tpa_per_game", stroke: "#1f77b4", strokeWidth: 2}),
     Plot.dot(playerRows, {x: "season", y: "tpa_per_game", fill: "#1f77b4"})
   ]
@@ -198,6 +211,7 @@ Plot.plot({
   x: {label: "Season", tickFormat: d => seasonLookup.get(d) ?? String(d)},
   y: {label: "3P%", percent: true},
   marks: [
+    Plot.ruleX([injurySeason], {stroke: "#d00000", strokeDasharray: "4,4"}),
     Plot.lineY(playerRows, {x: "season", y: "tp_pct", stroke: "#e76f51", strokeWidth: 2}),
     Plot.dot(playerRows, {x: "season", y: "tp_pct", fill: "#e76f51"})
   ]
@@ -245,6 +259,7 @@ segmentRows = courtSegments().flatMap(seg =>
 Plot.plot({
   width: 930,
   height: 520,
+  subtitle: injuryNote,
   margin: 18,
   x: {domain: [-25, 25], axis: null},
   y: {domain: [0, 47], axis: null},
@@ -272,6 +287,7 @@ zoneAgg = d3.rollups(
 Plot.plot({
   width: 930,
   height: 340,
+  subtitle: injuryNote,
   marginLeft: 180,
   x: {label: "Made shots"},
   y: {label: null},

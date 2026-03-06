@@ -33,3 +33,10 @@ quarto render
 ```
 
 The site is emitted to `Scrollytell_NBA/docs`.
+
+## Contribution and Credits
+
+- [Kashmala Arif](https://www.linkedin.com/in/kashmalaarif/)
+- [Akosua Owusu](https://www.linkedin.com/in/akosua-owusu-ansah/)
+- [Joshua Jaquez](https://www.linkedin.com/in/joshua-jaquez-a370a6342/)
+- [Stephen Syl-Akinwale](https://www.linkedin.com/in/stephen-syl-akinwale/)

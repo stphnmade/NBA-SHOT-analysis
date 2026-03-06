@@ -28,6 +28,13 @@ readr::write_csv(explorer, "docs/data/shot_explorer_sample.csv")
 
 Filter by season, team, shot type, and result.
 
+::: {.callout-note}
+## Injury Note For Interpretation
+Stephen Curry broke his left hand on **October 30, 2019** (season **2019-20**), underwent surgery, and missed **58 consecutive games**.  
+He played only **5 games** that season, briefly returned in March 2020, and Golden State finished **15-50**.  
+Use the season filter to inspect the injury season directly while comparing shot behavior around it.
+:::
+
 ```{ojs}
 shotData = await d3.csv("data/shot_explorer_sample.csv", d3.autoType)
 
@@ -95,6 +102,9 @@ seasonLookup = new Map(seasonMeta.map(d => [d.season, d.season_label]))
 seasonFromLabel = new Map(seasonMeta.map(d => [d.season_label, d.season]))
 seasonLabels = seasonMeta.map(d => d.season_label)
 seasonOptions = ["All seasons", ...seasonLabels]
+injurySeason = 2019
+injuryLabel = seasonLookup.get(injurySeason) ?? "2019-20"
+injuryNote = `Injury context: broken left hand (${injuryLabel}), 58-game absence, 5 games played, Warriors 15-50.`
 
 teamOptions = ["All teams", ...Array.from(new Set(
   shotData.map(d => d.team_name).filter(Boolean)
@@ -135,7 +145,8 @@ filteredShots = shotData.filter(d =>
   (resultFilter === "All" || d.shot_made === resultFilter)
 )
 
-md`Showing **${filteredShots.length.toLocaleString()}** sampled shots.`
+md`Showing **${filteredShots.length.toLocaleString()}** sampled shots.  
+${injuryNote}`
 ```
 
 ```{ojs}
@@ -181,6 +192,7 @@ segmentRows = courtSegments().flatMap(seg =>
 Plot.plot({
   width: 930,
   height: 520,
+  subtitle: injuryNote,
   margin: 18,
   x: {domain: [-25, 25], axis: null},
   y: {domain: [0, 47], axis: null},
@@ -207,6 +219,7 @@ Plot.plot({
 Plot.plot({
   width: 930,
   height: 520,
+  subtitle: injuryNote,
   margin: 18,
   x: {domain: [-25, 25], axis: null},
   y: {domain: [0, 47], axis: null},
@@ -228,6 +241,7 @@ zoneAgg = d3.rollups(
 Plot.plot({
   width: 930,
   height: 350,
+  subtitle: injuryNote,
   marginLeft: 170,
   x: {label: "Shot count"},
   y: {label: null},

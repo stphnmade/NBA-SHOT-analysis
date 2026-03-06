@@ -26,23 +26,35 @@ This view tests the hypothesis that **Stephen Curry's 2014-2016 stretch** accele
 
 ```{r}
 library(ggplot2)
-library(sportyR)
 
 steph_2014_2016 <- comp$made_shots |>
   filter(player_name == "Stephen Curry", season >= 2014, season <= 2016) |>
   mutate(loc_y_flipped = 47 - loc_y)
 
-geom_basketball(league = "NBA", display_range = "offense", rotation = 90) +
-  geom_point(
-    data = steph_2014_2016,
-    aes(x = loc_x, y = loc_y_flipped),
-    color = "#1f77b4",
-    alpha = 0.2,
-    size = 0.7
-  ) +
-  coord_cartesian(xlim = c(-25, 25), ylim = c(0, 47)) +
-  labs(title = "sportyR half-court: Stephen Curry made shots (2014-15 to 2016-17)") +
-  theme_void()
+if (requireNamespace("sportyR", quietly = TRUE)) {
+  sportyR::geom_basketball(league = "NBA", display_range = "offense", rotation = 90) +
+    geom_point(
+      data = steph_2014_2016,
+      aes(x = loc_x, y = loc_y_flipped),
+      color = "#1f77b4",
+      alpha = 0.2,
+      size = 0.7
+    ) +
+    coord_cartesian(xlim = c(-25, 25), ylim = c(0, 47)) +
+    labs(title = "sportyR half-court: Stephen Curry made shots (2014-15 to 2016-17)") +
+    theme_void()
+} else {
+  ggplot(steph_2014_2016, aes(x = loc_x, y = loc_y_flipped)) +
+    geom_point(color = "#1f77b4", alpha = 0.2, size = 0.7) +
+    coord_equal(xlim = c(-25, 25), ylim = c(0, 47), expand = FALSE) +
+    labs(
+      title = "Half-court made shots (fallback render)",
+      subtitle = "sportyR unavailable in this environment",
+      x = NULL,
+      y = NULL
+    ) +
+    theme_void()
+}
 ```
 
 ```{ojs}

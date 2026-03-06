@@ -30,10 +30,10 @@ jobs:
 
       - name: Install R dependencies
         run: |
-          Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); install.packages(c("tidyverse", "janitor", "sportyR"), Ncpus = 2)'
+          Rscript -e 'options(repos = c(CRAN = "https://cloud.r-project.org")); install.packages(c("dplyr", "ggplot2", "scales", "janitor", "readr", "tidyr"), Ncpus = 2); try(install.packages("sportyR", Ncpus = 2), silent = TRUE)'
 
       - name: Render Quarto website
-        run: quarto render Scrollytell_NBA
+        run: quarto render Scrollytell_NBA --cache-refresh
 
       - name: Verify build output
         run: test -f Scrollytell_NBA/docs/index.html

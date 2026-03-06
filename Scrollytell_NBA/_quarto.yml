@@ -1,6 +1,8 @@
 project:
   type: website
   output-dir: docs
+  resources:
+    - assets/slides/INFO-3312-Slides.pdf
 
 website:
   title: "NBA Shot Analysis"
@@ -18,6 +20,9 @@ website:
         text: Shot Explorer
       - href: about.qmd
         text: About
+    right:
+      - href: assets/slides/INFO-3312-Slides.pdf
+        text: Slides (PDF)
 
 format:
   html:

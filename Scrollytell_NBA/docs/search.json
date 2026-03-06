@@ -11,7 +11,7 @@
     "href": "index.html",
     "title": "The Story: How the Three Took Over",
     "section": "",
-    "text": "People attempted threes before Steph Curry. The shift is that after his peak stretch, the league restructured around that shot profile.\nEven in 2019-20, when Curry was mostly absent, league three-point behavior stayed elevated.\n\n\n\n\n\n\n\nNoteInjury Context Used In The Visuals\n\n\n\nIn the 2019-20 season, Stephen Curry broke his left hand (second metacarpal) on October 30, 2019, needed surgery, and missed 58 straight games.\nHe played only 5 games that season (also affected by the COVID suspension), and Golden State finished 15-50.\nHe briefly returned in March 2020, then used the long break to rehab into a more efficient post-injury version.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n1) The baseline: threes existed, but did not dominate\nBefore the Curry inflection years, teams were adding threes gradually. The league still leaned heavily on traditional shot balances.\n\n\n\n\n2) Shot gravity changes the volume ceiling\nCurry did not just shoot efficiently. He sustained extreme three-point volume, pulling the baseline upward for everyone.\n\n\n\n\n3) Peak year analysis\nHis highest-volume three-point season reached 884 attempts and 401 makes in 2016-17.\n\n\n\n\n4) 2014-2016 hypothesis window\nThis is where Curry’s rise and the league’s post-shift trajectory align most clearly.\n\n\n\n\n5) Structural shift, then COVID disruption\nBy 2019-20, Curry was mostly out, but league three-point volume still held.\nThat supports your narrative: the shot diet change persisted beyond one player being active game-to-game."
+    "text": "People attempted threes before Steph Curry. The shift is that after his peak stretch, the league restructured around that shot profile.\nEven in 2019-20, when Curry was mostly absent, league three-point behavior stayed elevated.\n\n\n\n\n\n\n\nTipPresentation Context\n\n\n\nThe project deck is available here: INFO 3312 Slides (PDF).\nNarrative anchor from the presentation: league 3PA share rose from about 22% (2004-05) to over 42% (2023-24) while midrange share dropped from about 30% to under 12%.\n\n\n\n\n\n\n\n\nNoteInjury Context Used In The Visuals\n\n\n\nIn the 2019-20 season, Stephen Curry broke his left hand (second metacarpal) on October 30, 2019, needed surgery, and missed 58 straight games.\nHe played only 5 games that season (also affected by the COVID suspension), and Golden State finished 15-50.\nHe briefly returned in March 2020, then used the long break to rehab into a more efficient post-injury version.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n1) Baseline era: before the inflection\nThrees were always part of NBA offense, but the league mix was still more traditional.\nThis section sets up the “before” frame from the project objective.\n\n\n\n\n2) Curry’s volume ceiling is the mechanism\nCurry did not only shoot efficiently; he normalized high-volume pull-up threes over full seasons.\n\n\n\n\n3) Peak year analysis\nHis highest-volume three-point season reached 884 attempts and 401 makes in 2016-17.\nThis is the point where “influence” becomes measurable against league trend movement.\n\n\n\n\n4) 2014-2016 hypothesis window\nThis is where Curry’s rise and the league’s acceleration line up most clearly, matching your core hypothesis.\n\n\n\n\n5) Structural shift, then COVID disruption\nBy 2019-20, Curry was mostly out, but league three-point volume still held.\nThat supports the story conclusion: the shot diet change persisted beyond one player being active game-to-game."
   },
   {
     "objectID": "shot-explorer.html",
@@ -68,5 +68,19 @@
     "title": "About",
     "section": "Deployment",
     "text": "Deployment\nRender with:\ncd Scrollytell_NBA\nquarto render\nThe site is emitted to Scrollytell_NBA/docs."
+  },
+  {
+    "objectID": "about.html#presentation-slides",
+    "href": "about.html#presentation-slides",
+    "title": "About",
+    "section": "Presentation Slides",
+    "text": "Presentation Slides\n\nDeck: INFO 3312 Slides (PDF)\nThe Story tab reuses the deck narrative: baseline era, Curry peak window (2014-2016), and post-injury persistence in league-wide three-point volume."
+  },
+  {
+    "objectID": "about.html#contribution-and-credits",
+    "href": "about.html#contribution-and-credits",
+    "title": "About",
+    "section": "Contribution and Credits",
+    "text": "Contribution and Credits\n\nKashmala Arif\nAkosua Owusu\nJoshua Jaquez\nStephen Syl-Akinwale"
   }
 ]

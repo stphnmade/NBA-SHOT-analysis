@@ -34,6 +34,11 @@ quarto render
 
 The site is emitted to `Scrollytell_NBA/docs`.
 
+## Presentation Slides
+
+- Deck: [INFO 3312 Slides (PDF)](assets/slides/INFO-3312-Slides.pdf)
+- The Story tab reuses the deck narrative: baseline era, Curry peak window (2014-2016), and post-injury persistence in league-wide three-point volume.
+
 ## Contribution and Credits
 
 - [Kashmala Arif](https://www.linkedin.com/in/kashmalaarif/)

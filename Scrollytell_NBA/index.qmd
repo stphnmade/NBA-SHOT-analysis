@@ -64,6 +64,13 @@ People attempted threes before Steph Curry. The shift is that after his peak str
 Even in **`r injury_label`**, when Curry was mostly absent, league three-point behavior stayed elevated.
 :::
 
+::: {.callout-tip}
+## Presentation Context
+The project deck is available here: [INFO 3312 Slides (PDF)](assets/slides/INFO-3312-Slides.pdf){target="_blank"}.
+
+Narrative anchor from the presentation: league 3PA share rose from about **22% (2004-05)** to over **42% (2023-24)** while midrange share dropped from about **30%** to under **12%**.
+:::
+
 ::: {.callout-note}
 ## Injury Context Used In The Visuals
 In the **2019-20** season, Stephen Curry broke his left hand (second metacarpal) on **October 30, 2019**, needed surgery, and missed **58 straight games**.  
@@ -285,29 +292,31 @@ ggplot(selection_long, aes(season, share, fill = bucket)) +
 
 ::: {.story-step .align-right data-figure="1"}
 ::: {.step-card}
-### 1) The baseline: threes existed, but did not dominate
-Before the Curry inflection years, teams were adding threes gradually. The league still leaned heavily on traditional shot balances.
+### 1) Baseline era: before the inflection
+Threes were always part of NBA offense, but the league mix was still more traditional.  
+This section sets up the "before" frame from the project objective.
 :::
 :::
 
 ::: {.story-step .align-left data-figure="2"}
 ::: {.step-card}
-### 2) Shot gravity changes the volume ceiling
-Curry did not just shoot efficiently. He sustained extreme three-point volume, pulling the baseline upward for everyone.
+### 2) Curry's volume ceiling is the mechanism
+Curry did not only shoot efficiently; he normalized high-volume pull-up threes over full seasons.
 :::
 :::
 
 ::: {.story-step .align-center data-figure="3"}
 ::: {.step-card}
 ### 3) Peak year analysis
-His highest-volume three-point season reached **`r comma(peak_3pa)` attempts** and **`r comma(peak_3pm)` makes** in **`r peak_season_label`**.
+His highest-volume three-point season reached **`r comma(peak_3pa)` attempts** and **`r comma(peak_3pm)` makes** in **`r peak_season_label`**.  
+This is the point where "influence" becomes measurable against league trend movement.
 :::
 :::
 
 ::: {.story-step .align-right data-figure="4"}
 ::: {.step-card}
 ### 4) 2014-2016 hypothesis window
-This is where Curry's rise and the league's post-shift trajectory align most clearly.
+This is where Curry's rise and the league's acceleration line up most clearly, matching your core hypothesis.
 :::
 :::
 
@@ -315,7 +324,7 @@ This is where Curry's rise and the league's post-shift trajectory align most cle
 ::: {.step-card}
 ### 5) Structural shift, then COVID disruption
 By **`r injury_label`**, Curry was mostly out, but league three-point volume still held.  
-That supports your narrative: the shot diet change persisted beyond one player being active game-to-game.
+That supports the story conclusion: the shot diet change persisted beyond one player being active game-to-game.
 :::
 :::
 

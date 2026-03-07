@@ -167,6 +167,13 @@ ggplot(peer_trends, aes(season, tpa_per_game, color = player_name)) +
 steph_peak_plot <- steph_year |>
   mutate(peak_flag = if_else(season == peak_season, "Peak season", "Other seasons"))
 
+peak_label_data <- steph_peak_plot |>
+  filter(season == peak_season) |>
+  mutate(
+    label_y = fga3 + max(40, 0.06 * max(steph_peak_plot$fga3, na.rm = TRUE)),
+    label = paste0("Peak: ", comma(fga3), " attempts\n", comma(fgm3), " makes")
+  )
+
 ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
   geom_rect(
     inherit.aes = FALSE,
@@ -179,15 +186,16 @@ ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
   ) +
   geom_col(width = 0.72) +
   geom_text(
-    data = steph_peak_plot |> filter(season == peak_season),
-    aes(label = paste0("Peak: ", comma(fga3), " attempts\n", comma(fgm3), " makes")),
-    vjust = -0.35,
+    data = peak_label_data,
+    aes(y = label_y, label = label),
+    vjust = 0,
     size = 4.1,
     color = "#111"
   ) +
   scale_fill_manual(values = c("Peak season" = "#ffb703", "Other seasons" = "#6aa5d8")) +
   scale_x_continuous(breaks = steph_peak_plot$season, labels = steph_peak_plot$season_label) +
-  scale_y_continuous(labels = comma) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+  coord_cartesian(clip = "off") +
   labs(
     title = "Curry's peak season set the benchmark",
     subtitle = paste0("Most 3PA in one season: ", peak_season_label, " | Injury break highlighted at ", injury_label),
@@ -199,7 +207,8 @@ ggplot(steph_peak_plot, aes(season, fga3, fill = peak_flag)) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
     panel.grid.minor = element_blank(),
-    legend.position = "top"
+    legend.position = "top",
+    plot.margin = margin(14, 10, 8, 10)
   )
 ```
 :::

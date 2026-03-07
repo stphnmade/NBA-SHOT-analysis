@@ -45,6 +45,7 @@ p {
 .story-figure {
   display: none;
   width: 100%;
+  overflow: visible;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 220ms ease, transform 220ms ease;
@@ -99,6 +100,10 @@ p {
 
 .story-figure .cell-output-display > * {
   width: 100%;
+}
+
+.story-figure .cell-output-display {
+  overflow: visible;
 }
 
 .story-figure img,
